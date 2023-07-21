@@ -16,6 +16,8 @@ DURATION_UNIT: 'sec' | 's' | 'min' | 'm' | 'hour' | 'h' | 'day' | 'd' | 'mon' | 
 SWITCH: 'switch';
 CASE: 'case';
 DEFAULT: 'default';
+AT: '@';
+SHARP: '#';
 
 
 

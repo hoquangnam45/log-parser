@@ -7,7 +7,6 @@ grammar QueryRules;
 import QueryLexerRules;
 
 /**
- * The start rule, begin parsing here.
  * Ordering of the expressions in the grammar file is important
  * Specification:
  *   - Types:
@@ -19,12 +18,61 @@ import QueryLexerRules;
  *
  * Example: Basic query: in('ABC.log') filter threadName = "thread#1" and timeStamp > now - duration(3, 'sec')
  */
-full_query_expr: IN LPAREN STRING RPAREN FILTER (branchable_query_expr | query_expr);
+
+// The start rule, begin parsing here.
+full_query_expr: IN LPAREN (STRING | constant_expr | named_variable_expr) RPAREN FILTER (branchable_query_expr | query_expr) EOF;
 
 /** Different types of expressions supported by the query language */
-// Literal expressions
+// Branchable query expressions
+branchable_query_expr:  SWITCH CASE grouped_query_expr COLON grouped_query_expr (CASE grouped_query_expr COLON grouped_query_expr)* DEFAULT COLON grouped_query_expr #SwitchCaseExpr |
+                        grouped_query_expr QM grouped_query_expr COLON grouped_query_expr #TernaryExpr
+                        ;
+
+// Grouped query expressions
+grouped_query_expr: LPAREN query_expr RPAREN |
+                    query_expr;
+
+// Expressions that is the main expression of the query language
+query_expr:     BOOL |
+                regex_expr |
+                grouped_sub_expr (LARGER | LARGER_OR_EQUAL | SMALLER_OR_EQUAL | SMALLER | EQUAL | UNEQUAL) grouped_sub_expr |
+                query_expr AND query_expr |
+                query_expr OR query_expr |
+                seq_expr IN seq_expr |
+                (NOT | EXCLAMATION_MARK) query_expr
+                ;
+
+// Sub-expressions - the backbone expressions
+// Grouped sub expressions
+grouped_sub_expr: LPAREN sub_expr RPAREN |
+                  sub_expr
+                  ;
+sub_expr:   <assoc=right> sub_expr EXP sub_expr |
+            sub_expr (MUL | DIV | MOD) sub_expr |
+            sub_expr (ADD | SUB) sub_expr |
+            seq_expr |
+            join_seq_expr |
+            regex_expr |
+            func_expr |
+            trivial_expr
+            ;
+
+seq_expr:   SEQ LPAREN elements_expr? RPAREN | func_expr;
+join_seq_expr: seq_expr ADD seq_expr;
+
+regex_expr: REGEX LPAREN regex_param_expr COMMA regex_param_expr RPAREN;
+regex_param_expr: STRING | constant_expr | named_variable_expr | func_expr;
+
+constant_expr: AT ID;
+named_variable_expr: SHARP ID;
+trivial_expr:   literal_expr |
+                constant_expr |
+                named_variable_expr
+                ;
+
 time_literal_expr: TIME LPAREN STRING (COMMA STRING)? RPAREN;
 duration_literal_expr: TIME LPAREN INT (COMMA DURATION_UNIT)? RPAREN;
+
 literal_expr:   STRING |
                 NUMBER |
                 NULL |
@@ -33,33 +81,6 @@ literal_expr:   STRING |
                 duration_literal_expr
                 ;
 
-// Regex matching expressions
-regex_expr: REGEX LPAREN sub_expr COMMA STRING RPAREN;
-
-// Branchable query expressions
-branchable_query_expr:  SWITCH CASE query_expr COLON query_expr (CASE query_expr COLON query_expr)* DEFAULT COLON query_expr #SwitchCaseExpr |
-                        query_expr QM query_expr COLON query_expr #TernaryExpr
-                        ;
-
-// Expressions that is the main expression of the query language
-query_expr:     BOOL #BoolLiteralExpr |
-                regex_expr #RegexExpr |
-                LPAREN query_expr RPAREN #GroupExpr | // Grouping expressions will have higher precedence
-                sub_expr (LARGER | LARGER_OR_EQUAL | SMALLER_OR_EQUAL | SMALLER | EQUAL | UNEQUAL) sub_expr #CompareExpr |
-                query_expr AND query_expr #AndExpr |
-                query_expr OR query_expr #OrExpr |
-                sub_expr IN sub_expr #InExpr |
-                (NOT | EXCLAMATION_MARK) query_expr #NotExpr
-                ;
-
-// The backbone of all expressions - sub expressions
-sub_expr:       literal_expr #LiteralExpr |
-                SEQ LPAREN seq_elements? RPAREN #SeqExpr | // Expressions that defined a sequence of values
-                ID LPAREN seq_elements? RPAREN #FuncExpr | // Expressions that defined a call to some external function
-                <assoc=right> sub_expr EXP sub_expr #ExpExpr |
-                sub_expr (MUL | DIV) sub_expr #MulDivExpr |
-                sub_expr (ADD | SUB) sub_expr #AddSubExpr |
-                ID #IdExpr // Named variables, constants
-                ;
-seq_elements: seq_element (COMMA seq_element)*;
-seq_element: sub_expr;
+func_expr: ID LPAREN elements_expr? RPAREN;
+elements_expr: element_expr (COMMA element_expr)*;
+element_expr: sub_expr | seq_expr; // Expressions that defined a call to some external function
