@@ -6,7 +6,13 @@ import java.util.List;
 import java.util.Map;
 
 public class QueryEvaluator {
-    public static Object evaluate(String opName, Object... params) {
+    private static volatile QueryEvaluator INSTANCE = new QueryEvaluator();
+
+    public static QueryEvaluator getInstance() {
+        return INSTANCE;
+    }
+
+    public Object evaluate(String opName, Object... params) {
         switch (opName) {
             case "startWiths": {
                 if (params.length == 2 && params[0] instanceof String && params[1] instanceof String) {
@@ -89,7 +95,30 @@ public class QueryEvaluator {
             case "duration": {
 
             }
+            case "bool": {
+
+            }
         }
         throw new UnsupportedOperationException("Try to evaluate method " + opName + " with parameters " + Arrays.toString(params) + " but is not supported");
+    }
+
+    public Object variable(String name) {
+        return null;
+    }
+
+    public Object constant(String name) {
+        return null;
+    }
+
+    public <T> T constant(String name, Class<T> type) {
+        return type.cast(constant(name));
+    }
+
+    public <T> T variable(String name, Class<T> type) {
+        return type.cast(variable(name));
+    }
+
+    public <T> T evaluate(String opName, Class<T> type, Object... params) {
+        return type.cast(evaluate(opName, params));
     }
 }

@@ -15,14 +15,16 @@
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <antlr.version>4.13.0</antlr.version>
+        <lombok.version>1.18.28</lombok.version>
     </properties>
 
     <dependencies>
+        <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>RELEASE</version>
-            <scope>compile</scope>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
         </dependency>
         <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
         <dependency>
@@ -52,6 +54,7 @@
                 <configuration>
                     <visitor>true</visitor>
                     <sourceDirectory>${basedir}/src/main/antlr4</sourceDirectory>
+                    <libDirectory>src/main/antlr4/com/ttl/internal/vn/tool/grammar</libDirectory>
                 </configuration>
                 <executions>
                     <execution>

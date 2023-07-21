@@ -26,10 +26,12 @@ replay_pid*
 # IDE auto-generated file
 .idea
 .vscode
+*.iml
 
 # Maven auto-generated file
 target
 
 # Auto-generated file from antlr grammar rules
-*/gen
 gen
+*.tokens
+*.interp
