@@ -1,15 +1,28 @@
 package com.ttl.internal.vn.tool.query;
 
+import com.ttl.internal.vn.tool.log.ILogEntry;
+import com.ttl.internal.vn.tool.log.ILogSource;
+
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
+/**
+ * Some special variable
+ * "@source": refer to the log source itself, unfiltered
+ */
 public class QueryEvaluator {
-    private static volatile QueryEvaluator INSTANCE = new QueryEvaluator();
+    private ILogEntry entry;
 
-    public static QueryEvaluator getInstance() {
-        return INSTANCE;
+    public QueryEvaluator(ILogEntry entry) {
+        this.entry = entry;
+    }
+
+    public ILogEntry getEntry() {
+        return entry;
     }
 
     public Object evaluate(String opName, Object... params) {
@@ -103,6 +116,7 @@ public class QueryEvaluator {
     }
 
     public Object variable(String name) {
+
         return null;
     }
 
@@ -115,7 +129,18 @@ public class QueryEvaluator {
     }
 
     public <T> T variable(String name, Class<T> type) {
-        return type.cast(variable(name));
+        return Optional.ofNullable(variable(name)).map(it -> {
+            if (type == String.class) {
+                return it.toString();
+            }
+            if (type == Number.class) {
+                return new BigDecimal(it.toString());
+            }
+            if (type == Boolean.class) {
+                return Boolean.parseBoolean(it.toString());
+            }
+            return it;
+        }).map(type::cast).orElse(null);
     }
 
     public <T> T evaluate(String opName, Class<T> type, Object... params) {
