@@ -20,13 +20,14 @@ import QueryLexerRules;
  */
 
 // The start rule, begin parsing here.
-full_query_expr: IN LPAREN query_source_expr RPAREN FILTER query_expr EOF;
-query_source_expr: STRING | constant_expr | named_variable_expr;
+full_query_expr: IN LPAREN query_sources_expr RPAREN FILTER query_expr EOF;
+query_source_expr: STRING | constant_expr | named_variable_expr | full_query_expr;
+query_sources_expr: query_source_expr (COMMA query_source_expr)*;
 
 /** Different types of expressions supported by the query language */
 // Expressions that is the main expression of the query language
 query_expr:     SWITCH CASE query_expr COLON query_expr (CASE query_expr COLON query_expr)* DEFAULT COLON query_expr #SwitchCaseQueryExpr |
-                LPAREN query_expr RPAREN QM query_expr COLON query_expr #TertiaryQueryExpr |
+                LPAREN query_expr RPAREN QM query_expr COLON query_expr #TernaryQueryExpr |
                 LPAREN query_expr RPAREN #GroupedQueryExpr |
                 BOOL #BoolLiteralExpr |
                 REGEX LPAREN sub_expr COMMA sub_expr RPAREN #RegexExpr |
@@ -40,8 +41,10 @@ query_expr:     SWITCH CASE query_expr COLON query_expr (CASE query_expr COLON q
 
 // Sub-expressions - the backbone expressions
 sub_expr:   SWITCH CASE query_expr COLON sub_expr (CASE query_expr COLON sub_expr)* DEFAULT COLON sub_expr #SwitchCaseSubExpr |
-            LPAREN query_expr RPAREN QM sub_expr COLON sub_expr #TertiarySubExpr |
+            LPAREN query_expr RPAREN QM sub_expr COLON sub_expr #TernarySubExpr |
             LPAREN sub_expr RPAREN #GroupedSubExpr |
+            sub_expr LBRACK sub_expr RBRACK #ArrayAccessorExpr |
+            sub_expr DOT ID #ElementAccessorExpr |
             <assoc=right> sub_expr EXP sub_expr #ExpExpr |
             sub_expr (MUL | DIV | MOD) sub_expr #MulDivExpr |
             sub_expr (ADD | SUB) sub_expr #AddSubExpr |

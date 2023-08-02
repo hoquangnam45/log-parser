@@ -4,7 +4,8 @@ import CommonLexerRules;
 
 /** Lexical grammar specific to query language grammar rules */
 IN: 'in';
-WS: F_WS -> skip; // throw away whitespace
+ID: F_ID;
+WS: F_WS+ -> skip; // throw away whitespace
 REGEX: 'regex';
 SEQ: 'seq';
 FILTER: 'filter';

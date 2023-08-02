@@ -1,24 +1,25 @@
 package com.ttl.internal.vn.tool.query;
 
 import com.ttl.internal.vn.tool.log.ILogEntry;
-import com.ttl.internal.vn.tool.log.ILogSource;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 /**
- * Some special variable
- * "@source": refer to the log source itself, unfiltered
+ *
+ * Special variable
+ *      + @source: refer to the log source itself, unfiltered
+ *      + @entry: refer to the entry that currently processing
+ *      +
  */
-public class QueryEvaluator {
-    private ILogEntry entry;
+public class QueryEvaluator
+{
+    private ILogEntry      entry;
 
-    public QueryEvaluator(ILogEntry entry) {
-        this.entry = entry;
+    public void setCurrentEntry(ILogEntry currentEntry) {
+        this.entry = currentEntry;
     }
 
     public ILogEntry getEntry() {

@@ -45,10 +45,13 @@ INC: '++';
 DEC: '--';
 DURATION: 'duration';
 STRING: '"' (F_ESC|.)*? '"' ; // String is defined with double quote, allow escaping special character
-ID: [a-zA-Z][a-zA-Z0-9]+; // ID do not allow to start withs number - Lowest priority
+DOT: '.';
 
+fragment F_ID: (F_LOWERCASE_CHAR | F_UPPERCASE_CHAR)(F_LOWERCASE_CHAR | F_UPPERCASE_CHAR | F_DIGIT)+; // ID do not allow to start withs number - Lowest priority
+fragment F_LOWERCASE_CHAR: [a-z];
+fragment F_UPPERCASE_CHAR: [A-Z];
 fragment F_DIGIT: [0-9];
-fragment F_WS : [ \t\r\n]+; // match 1-or-more whitespace but discard
+fragment F_WS : [ \t\r\n]; // match 1-or-more whitespace but discard
 fragment F_ESC : '\\"' | '\\\\' ; // 2-char sequences \" and \\
 fragment F_FALSE: 'false';
 fragment F_TRUE: 'true';
