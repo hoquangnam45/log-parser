@@ -1,15 +1,11 @@
 package com.ttl.internal.vn.tool.log;
 
+import java.util.concurrent.Flow.Subscriber;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-public interface ILogSource extends Iterable<ILogEntry>, Cloneable
+public interface ILogSource
 {
     String getID();
     void refresh();
-
-    default Stream<ILogEntry> toStream() {
-        return StreamSupport.stream(spliterator(), false);
-    }
-    ILogSource add(ILogSource anotherSource);
 }
