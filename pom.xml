@@ -7,8 +7,15 @@
     <groupId>com.ttl.internal.vn.tool</groupId>
     <artifactId>LogParser</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
 
     <name>LogParser</name>
+    <modules>
+        <module>log-ingestor</module>
+        <module>log-query</module>
+        <module>log-parser-ui</module>
+        <module>log-common</module>
+    </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
