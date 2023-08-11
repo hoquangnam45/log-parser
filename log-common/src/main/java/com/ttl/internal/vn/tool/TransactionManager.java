@@ -6,9 +6,13 @@ import java.util.Stack;
 
 public class TransactionManager
 {
-	private static final TransactionManager                 INSTANCE              = new TransactionManager();
 	private static final ThreadLocal<Stack<Transaction<?>>> transactionStore = new ThreadLocal<>();
-	private Datasource                                      datasource            = Datasource.getInstance();
+
+	private final Datasource datasource;
+
+	public TransactionManager(Datasource datasource) {
+		this.datasource = datasource;
+	}
 
 	public abstract class ProxyTransaction<T> extends Transaction<T> {
 		protected final Transaction<T> innerTransaction;
@@ -18,7 +22,7 @@ public class TransactionManager
 		}
 
 		@Override
-		public abstract T runInTransaction(Transaction<?> outerTransaction) throws Exception;
+		public abstract T runInTransaction() throws Exception;
 		@Override
 		public abstract void rollback() throws SQLException;
 		@Override
@@ -29,67 +33,56 @@ public class TransactionManager
 
 	public <T> T runTransaction(Transaction<T> transaction) throws Exception
 	{
-		Stack<Transaction<?>> transactionStack = transactionStackStore.get() != null ? transactionStackStore.get() : new Stack<>();
-		transactionStackStore.set(transactionStack);
+		Stack<Transaction<?>> transactionStack = transactionStore.get() != null ? transactionStore.get() : new Stack<>();
+		transactionStore.set(transactionStack);
 		Transaction<?> enclosingTransaction = transactionStack.peek();
 		ProxyTransaction<T> proxyTransaction;
 		if (enclosingTransaction == null) {
-			proxyTransaction = new ProxyTransaction<T>(transaction)
-			{
-				private Connection inProgressConnection = datasource.getConnection();
+			proxyTransaction = new ProxyTransaction<>(transaction) {
+                private Connection inProgressConnection = datasource.getConnection();
 
-				@Override
-				public T runInTransaction() throws Exception
-				{
-					try
-					{
+                @Override
+                public T runInTransaction() throws Exception {
+                    try {
+						innerTransaction.setEnclosingTransaction(this);
 						T result = innerTransaction.runInTransaction();
-						commit();
-						return result;
-					} catch (Exception e) {
-						rollback();
-						throw new RuntimeException(e);
-					} finally
-					{
-						close();
-					}
-				}
+                        commit();
+                        return result;
+                    } catch (Exception e) {
+                        rollback();
+                        throw new RuntimeException(e);
+                    } finally {
+                        close();
+                    }
+                }
 
-				@Override
-				public Transaction<?> getEnclosingTransaction()
-				{
-					return null;
-				}
+                @Override
+                public Transaction<?> getEnclosingTransaction() {
+                    return null;
+                }
 
-				@Override
-				public void commit() throws SQLException
-				{
-					if (inProgressConnection.isValid(0))
-					{
-						inProgressConnection.commit();
-					}
-				}
+                @Override
+                public void commit() throws SQLException {
+                    if (inProgressConnection.isValid(0)) {
+                        inProgressConnection.commit();
+                    }
+                }
 
-				@Override
-				public void rollback() throws SQLException
-				{
-					if (inProgressConnection.isValid(0))
-					{
-						inProgressConnection.rollback();
-					}
-				}
+                @Override
+                public void rollback() throws SQLException {
+                    if (inProgressConnection.isValid(0)) {
+                        inProgressConnection.rollback();
+                    }
+                }
 
-				@Override
-				public void close() throws SQLException
-				{
-					if (!inProgressConnection.isClosed())
-					{
-						transactionStackStore.remove();
-						inProgressConnection.close();
-					}
-				}
-			};
-			transaction.setEnclosingTransaction(proxyTransaction);
+                @Override
+                public void close() throws SQLException {
+                    if (!inProgressConnection.isClosed()) {
+                        transactionStore.remove();
+                        inProgressConnection.close();
+                    }
+                }
+            };
 			transactionStack.add(proxyTransaction);
 		} else {
 			proxyTransaction = new ProxyTransaction<>(transaction)
@@ -100,6 +93,7 @@ public class TransactionManager
 				{
 					try
 					{
+						innerTransaction.setEnclosingTransaction(this);
 						return innerTransaction.runInTransaction();
 					}
 					catch (Exception e)
@@ -137,15 +131,10 @@ public class TransactionManager
 					transactionStack.pop();
 				}
 			};
-			transaction.setEnclosingTransaction(proxyTransaction);
 			proxyTransaction.setEnclosingTransaction(enclosingTransaction);
 			transactionStack.add(proxyTransaction);
 		}
 
 		return proxyTransaction.runInTransaction();
-	}
-
-	public static TransactionManager getInstance() {
-		return INSTANCE;
 	}
 }

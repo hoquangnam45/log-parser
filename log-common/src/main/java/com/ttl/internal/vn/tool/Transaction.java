@@ -10,13 +10,19 @@ public abstract class Transaction<T> implements AutoCloseable
 
 	private Transaction<?> enclosingTransaction;
 
-	public abstract T runInTransaction(Transaction<?> outerTransaction) throws Exception;
+	public abstract T runInTransaction() throws Exception;
 
-	void setEnclosingTransaction(Transaction<?> enclosingTransaction) {
+	protected void setEnclosingTransaction(Transaction<?> enclosingTransaction) {
+		if (enclosingTransaction == this.enclosingTransaction) {
+			return;
+		}
+		if (this.enclosingTransaction != null) {
+			throw new IllegalStateException("This transaction is already run in another enclosing transaction");
+		}
 		this.enclosingTransaction = enclosingTransaction;
 	}
 
-	Transaction<?> getEnclosingTransaction() {
+	public Transaction<?> getEnclosingTransaction() {
 		return enclosingTransaction;
 	}
 
@@ -31,6 +37,8 @@ public abstract class Transaction<T> implements AutoCloseable
 		Transaction<?> transaction = getEnclosingTransaction();
 		if (getEnclosingTransaction() != null) {
 			transaction.commit();
+		} else {
+			getEnclosingTransaction().commit();
 		}
 	}
 
@@ -38,6 +46,8 @@ public abstract class Transaction<T> implements AutoCloseable
 		Transaction<?> transaction = getEnclosingTransaction();
 		if (getEnclosingTransaction() != null) {
 			transaction.rollback();
+		} else {
+			getEnclosingTransaction().commit();
 		}
 	}
 
