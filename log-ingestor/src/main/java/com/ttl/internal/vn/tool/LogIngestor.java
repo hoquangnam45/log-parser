@@ -6,9 +6,7 @@ import io.reactivex.rxjava3.annotations.NonNull;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Single;
-import io.reactivex.rxjava3.core.SingleObserver;
 import io.reactivex.rxjava3.disposables.Disposable;
-import io.reactivex.rxjava3.observers.DisposableObserver;
 import io.reactivex.rxjava3.observers.DisposableSingleObserver;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import org.apache.commons.cli.CommandLine;
@@ -19,9 +17,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOCase;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,16 +25,21 @@ import org.h2.tools.Server;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.Reader;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
+import java.util.Stack;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+// Multiple log entries -> log blocks -> log sessions
 public class LogIngestor
 {
 	private final TransactionManager transactionManager;
@@ -194,6 +195,8 @@ public class LogIngestor
 		DriverManager.getConnection(url, username, password);
 	}
 
+	private List<LogBlock> logBlocks = new ArrayList<>();
+
 	public synchronized void start(boolean watch, File logFile, Disposable disposable) throws IOException, InterruptedException {
 		// Open a connection to db
 		if (!watch) {
@@ -206,7 +209,7 @@ public class LogIngestor
 				String line = br.readLine();
 				if (line != null) {
 					switch (getLineType(line)) {
-						case ENTRY:
+						case NEW_ENTRY:
 							createNewLogEntry(line);
 							break;
 						case COMMENT:
@@ -236,7 +239,7 @@ public class LogIngestor
 			String line;
 			while ((line = br.readLine()) != null) {
 				switch (getLineType(line)) {
-					case ENTRY:
+					case NEW_ENTRY:
 						createNewLogEntry(line);
 						break;
 					case COMMENT:
@@ -258,8 +261,41 @@ public class LogIngestor
 	private void createProperty(String line) {
 	}
 
-	private LogLineType getLineType(String line) {
-		return null;
+	boolean maybeLogFile = false;
+	boolean maybeMessage = true;
+	boolean maybeComment = true;
+	private LogLineType previousLineType = null;
+	private int maybeHeaderCount = 0;
+	private Stack<Pair<LogLineType, String>> lineHistory = new Stack<>();
+	private Stack<Pair<LogBlockType, List<String>>> blockHistory = new Stack<>();
+	private List<LogSession>
+
+	private Stack<Pair<LogLineType, String>> getLineType(String line, Stack<Pair<LogLineType, String>> block) {
+		// Check if it's new log entry pattern
+		// NOTE: Pattern example: [INF TaskSchedular,04-03 17:56:57.172]:
+		String logNewEntryLinePattern = "\\[[A-Z]{3,} \\s*\\S+\\s*,\\s*\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}(.\\d+)*\\]\\s*:\\s*";
+		Pattern p = Pattern.compile(logNewEntryLinePattern);
+		Matcher m = p.matcher(line);
+		if (m.find()) {
+			if
+			return LogLineType.NEW_ENTRY;
+		}
+
+		// This could be a startup header or roll file header or text inside a file or just a message
+		if (line.startsWith("*")) {
+			maybeHeaderCount++;
+			if (maybeHeaderCount < 3) {
+				return LogLineType.MAYBE_HEADER;
+			}
+			// Get 2 last maybe header
+		}
+
+		else {
+			re
+		}
+
+		// Just a log message
+		return LogLineType.MESSAGE;
 	}
 
 	// TODO: Implement this
