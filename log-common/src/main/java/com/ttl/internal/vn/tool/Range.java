@@ -11,15 +11,23 @@ public class Range {
     private int begin;
     private int end;
 
-    public Range after(Range anotherRange) {
-        return moveBegin(anotherRange.getEnd() + 1, this);
+    // TODO: Implement this
+    public Range findOverlap(Range anotherRange) {
+        if (!isOverlap(anotherRange)) {
+            return null;
+        }
+        return Range.builder()
+                .begin(Math.)
+                .end()
+                .build();
     }
 
-    public Range moveByDistance(int distance) {
-        return Range.builder()
-                .begin(begin + distance)
-                .end(end + distance)
-                .build();
+    public boolean isOverlap(Range anotherRange) {
+        return anotherRange.begin <= end && anotherRange.end >= begin;
+    }
+
+    public Range after(Range anotherRange) {
+        return moveBegin(anotherRange.getEnd() + 1, this);
     }
 
     public static Range moveBegin(int newBegin, Range rangeToMove) {
@@ -27,5 +35,15 @@ public class Range {
                 .begin(newBegin)
                 .end(newBegin + rangeToMove.getEnd() - rangeToMove.getBegin())
                 .build();
+    }
+
+    // TODO: Recheck to allow expand if range at front, or overlap
+    public void expandRange(Range anotherRange) {
+        // The range must be started immediately after chunk range
+        // Validate the range
+        if (anotherRange.begin - end != 1) {
+            throw new IllegalStateException("Invalid usage of expand range");
+        }
+        end = anotherRange.end;
     }
 }

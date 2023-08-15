@@ -6,57 +6,41 @@ import lombok.Getter;
 
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 // NOTE: A log entry started from a log entry header and end when another log entry header is found
 @Getter
 @AllArgsConstructor
 @Builder
-public class LogEntry implements Cloneable
+public class LogEntry
 {
 	private final LogEntryLevel logLevel;
+	// Not know what this mean yet, but this exists was mentioned inside the source
 	private final String msgId;
 	private final String sender;
 	private final OffsetDateTime timestamp;
-	private final List<String> messages; // each message corresponds to a line
-	private final Range range;
+	// each message corresponds to a line, this is as raw as possible as it include the unparsed metadata
+	private final List<Line> lines;
+	private final Line firstLineMessage;
+	private final FileChunk chunk;
 
-	private Stream<String> toStream() {
-		return messages.stream();
+	public void placeAfter(Range range) {
+		chunk.placeAfter(range);
 	}
 
-	@Override
-	public LogEntry clone() {
-		return LogEntry.builder()
-				.logLevel(logLevel)
-				.msgId(msgId)
-				.sender(sender)
-				.timestamp(timestamp)
-				.messages(messages.stream().collect(Collectors.toList()))
-				.range(range)
-				.build();
+	// This method get by line and does not include unparsed metadata in its return value
+	public String getMessage(int line) {
+		if (line == chunk.getRange().getBegin()) {
+			return firstLineMessage.getLine();
+		}
+		return lines.get(line - chunk.getRange().getBegin()).getLine();
 	}
 
-	public LogEntry after(LogEntry beforeEntry) {
-		return LogEntry.builder()
-				.logLevel(logLevel)
-				.msgId(msgId)
-				.sender(sender)
-				.timestamp(timestamp)
-				.messages(messages.stream().collect(Collectors.toList()))
-				.range(range.after(beforeEntry.getRange()))
-				.build();
-	}
+    public void appendMessageToLogEntry(Line line) {
+		lines.add(line);
+		chunk.getRange().expandRange(line.toRange());
+    }
 
-	public LogEntry moveByDistance(int distance) {
-		return LogEntry.builder()
-				.logLevel(logLevel)
-				.msgId(msgId)
-				.sender(sender)
-				.timestamp(timestamp)
-				.messages(messages.stream().collect(Collectors.toList()))
-				.range(range.moveByDistance(distance))
-				.build();
+	public List<LogEntryChange> getChanges(FileDiff diff) {
+
 	}
 }

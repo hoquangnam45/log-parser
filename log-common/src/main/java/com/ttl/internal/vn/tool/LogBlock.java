@@ -17,50 +17,33 @@ import java.util.stream.Stream;
 @AllArgsConstructor
 @Getter
 @Builder
-public class LogBlock implements Cloneable {
+public abstract class LogBlock {
     private final LogBlockType type;
+    private final FileChunk chunk;
     private final List<LogEntry> entries;
-    private final Range range;
+    private final List<Line> environments;
 
-    @Override
-    public LogBlock clone() {
-        return LogBlock.builder()
-                .type(type)
-                .range(range)
-                .entries(Optional.ofNullable(entries)
-                        .map(entries -> entries.stream().map(LogEntry::clone).collect(Collectors.toList()))
-                        .orElse(null))
-                .build();
+    public void placeAfter(Range range) {
+        chunk.placeAfter(range);
     }
 
-    public LogBlock after(LogBlock beforeBlock) {
-        Range beforeBlockRange = beforeBlock.getRange();
-        int newBegin = beforeBlockRange.getEnd() + 1;
-        Range newRange = Range.builder()
-                .begin(newBegin)
-                .end(newBegin + range.getEnd() - range.getBegin())
-                .build();
-        List<LogEntry> newEntries = Optional.ofNullable(entries)
-                .map(entries -> {
-                    LogEntry previousNewEntry = null;
-                    List<LogEntry> innerNewEntries = new ArrayList<>();
-                    for (int i = 0; i < entries.size(); i++) {
-                        LogEntry currentEntry = entries.get(i);
-                        if (previousNewEntry == null) {
-                            previousNewEntry = currentEntry.moveByDistance(newBegin - range.getBegin());
-                            innerNewEntries.add(previousNewEntry);
-                        } else {
-                            previousNewEntry = currentEntry.after(previousNewEntry);
-                            innerNewEntries.add(previousNewEntry);
-                        }
-                    }
-                    return innerNewEntries;
-                })
-                .orElse(null);
-        return LogBlock.builder()
-                .type(type)
-                .range(newRange)
-                .entries(newEntries)
-                .build();
+    public void addEnvironmentLine(Line line) {
+        environments.add(line);
+        chunk.getRange().expandRange(line.toRange());
+    }
+
+    public void addLogEntry(LogEntry entry) {
+        entries.add(entry);
+        chunk.getRange().expandRange(entry.getChunk().getRange());
+    }
+
+    public void appendMessageToLogEntry(Line line) {
+        // NOTE: This method should always be called after log entry so no need to check for size
+        entries.get(entries.size() - 1).appendMessageToLogEntry(line);
+        chunk.getRange().expandRange(line.toRange());
+    }
+
+    public List<LogBlockChange> getChanges(FileDiff diff) {
+
     }
 }

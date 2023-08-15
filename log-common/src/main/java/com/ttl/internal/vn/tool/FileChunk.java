@@ -11,4 +11,9 @@ import java.io.File;
 @Getter
 public class FileChunk {
     private final File file;
+    private Range range;
+
+    public void placeAfter(Range anotherRange) {
+        range = range.after(anotherRange);
+    }
 }

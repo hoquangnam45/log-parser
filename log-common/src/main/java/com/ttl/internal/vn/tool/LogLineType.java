@@ -4,10 +4,8 @@ import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
 public enum LogLineType {
-    MAYBE_HEADER(true),
-    MESSAGE(false),
-    NEW_ENTRY(false);
-
-    private final boolean shouldBuffer;
-
+    STARTUP_HEADER,
+    ROLLING_HEADER,
+    MESSAGE,
+    LOG_ENTRY,
 }

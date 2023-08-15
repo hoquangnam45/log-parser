@@ -10,6 +10,6 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class FileDiff {
-    private Range range;
-    private List<String> newContents;
+    private final FileChunk chunk;
+    private final List<String> newContents;
 }

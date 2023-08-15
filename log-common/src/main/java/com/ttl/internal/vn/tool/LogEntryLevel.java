@@ -9,22 +9,18 @@ import java.util.stream.Stream;
 @Getter
 public enum LogEntryLevel
 {
-	FATAL(1),
-	ERROR(1),
-	WARN(2),
-	INFO(4),
-	MESG(8),
-	NET(16),
-	SQL(32),
-	DEBUG(64);
+	ERROR(1, "ERR"),
+	WARNING(2, "WRN"),
+	INFO(4, "INF"),
+	MESSAGE(8, "MSG"),
+	NETWORK(16, "NET"),
+	SQL(32, "SQL"),
+	DEBUG(64, "DBG");
 
 	private final int level;
+	private final String shortName;
 
-	public static LogEntryLevel parseValue(String value) {
-		return Stream.of(values()).filter(v -> v.name().equalsIgnoreCase(value)).findFirst().orElse(null);
-	}
-
-	public static LogEntryLevel parseValue(Integer value) {
-		return Stream.of(values()).filter(v -> Integer.valueOf(v.getLevel()).equals(value)).findFirst().orElse(null);
+	public static LogEntryLevel parseValueShortName(String value) {
+		return Stream.of(values()).filter(v -> v.shortName.equalsIgnoreCase(value)).findFirst().orElse(null);
 	}
 }

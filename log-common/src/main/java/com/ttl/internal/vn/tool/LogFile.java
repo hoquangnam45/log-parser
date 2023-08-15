@@ -17,14 +17,12 @@ public class LogFile {
     private final List<LogBlock> blocks;
     private final File file;
 
-    private boolean modified = true;
-
     public LogBlock getLastBlock() {
         return Optional.ofNullable(blocks).filter(not(List::isEmpty)).map(it -> it.get(it.size() - 1)).orElse(null);
     }
 
     public void appendNewBlock(LogBlock block) {
-        LogBlock newBlock = Optional.of(getLastBlock()).map(lastBlock -> block.after(lastBlock)).orElseGet(block::clone);
-        blocks.add(newBlock);
+        Optional.of(getLastBlock()).ifPresent(lastBlock -> block.placeAfter(lastBlock.getChunk().getRange()));
+        blocks.add(block);
     }
 }

@@ -14,28 +14,28 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+// A log session can span multiple log files
 @Builder
 @AllArgsConstructor
 @Getter
 public class LogSession {
     private UUID uuid;
 
-    private LogBlock startupBlock;
-    // All rolling file log blocks
+    // All rolling file log blocks after startup blocks;
     private List<LogBlock> blocks;
 
-    public static LogSession startNewSession() {
+    public static LogSession startNewSession(StartupLogBlock startupBlock) {
         return LogSession.builder()
-                .blocks(new ArrayList<>())
+                .blocks(new ArrayList<>() {{ add(startupBlock); }})
                 .uuid(UUID.randomUUID())
                 .build();
     }
 
     public Map<String, String> getJavaEnvironments() {
-        return environments.computeIfAbsent("Java Runtime Environment", k -> new ArrayList<>()).stream()
-                .map(it -> it.split("="))
-                .map(it -> Pair.of(it[0].trim(), it[1].trim()))
-                .collect(Collectors.toMap(it -> it.getKey(), it -> it.getValue()));
+        return blocks.get(0).getEnvironments().stream()
+                .map(line -> line.getLine().split("="))
+                .filter(tokens -> tokens.length == 2)
+                .collect(Collectors.toMap(tokens -> tokens[0].trim(), tokens -> tokens[1].trim()));
     }
 
     public List<String> getTcpIpConfigurations() {
