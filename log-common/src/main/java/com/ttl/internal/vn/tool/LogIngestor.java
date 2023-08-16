@@ -256,7 +256,8 @@ public class LogIngestor {
 
             // Process buffer first so that events is emitted in order
             if (line.getLine().startsWith("*")) {
-                // Buffer it since it maybe a header, not emit the line type immediately
+                // Buffer it since it maybe a header, not emit the line type immediately since it maybe just a normal message
+                // instead of a header
                 headerBuffer.add(line);
             } else {
                 // Interact with header buffer queue to determine whether those line that has been buffered is just a
