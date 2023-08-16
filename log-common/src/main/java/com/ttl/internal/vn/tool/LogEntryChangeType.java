@@ -1,4 +1,6 @@
 package com.ttl.internal.vn.tool;
 
-public class LogEntryChangeType {
+public enum LogEntryChangeType {
+    APPEND,
+    NEW_ENTRY
 }

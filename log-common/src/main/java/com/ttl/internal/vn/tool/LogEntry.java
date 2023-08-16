@@ -40,7 +40,7 @@ public class LogEntry
 		chunk.getRange().expandRange(line.toRange());
     }
 
-	public List<LogEntryChange> getChanges(FileDiff diff) {
+	public List<LogEntryDeltaChange> getChanges(FileDiff diff) {
 
 	}
 }

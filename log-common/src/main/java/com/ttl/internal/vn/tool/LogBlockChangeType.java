@@ -1,6 +1,8 @@
 package com.ttl.internal.vn.tool;
 
 public enum LogBlockChangeType {
-    LOG_ENTRY_APPENDED,
-    LOG_ENTRY_DELETED
+    ENVIRONMENTS_APPENDED,
+    LOG_ENTRY_CHANGED,
+    NEW_STARTUP_BLOCK,
+    NEW_ROLLING_BLOCK,
 }

@@ -22,6 +22,9 @@ import org.h2.tools.Server;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.Duration;
@@ -127,15 +130,26 @@ public class App {
         Single.just(createHikariConfig(dbUsername, dbPassword, dbUrl))
                 .map(Datasource::new)
                 .map(TransactionManager::new)
-                .subscribeWith(new DisposableSingleObserver<TransactionManager>() {
+                .zipWith(Single.just(logFileObservables), Pair::of)
+                .subscribeWith(new DisposableSingleObserver<Pair<TransactionManager, Observable<File>>>() {
                     @Override
-                    public void onSuccess(@NonNull TransactionManager transactionManager) {
-                        logFileObservables
+                    public void onSuccess(@NonNull Pair<TransactionManager, Observable<File>> pair) {
+                        pair.getValue()
+                                .sorted((f1, f2) -> {
+                                    // Sort the files so log ingestor will only watch the latest files
+                                    try {
+                                        BasicFileAttributes attrs1 = Files.readAttributes(f1.toPath(), BasicFileAttributes.class);
+                                        BasicFileAttributes attrs2 = Files.readAttributes(f2.toPath(), BasicFileAttributes.class);
+                                        return attrs1.creationTime().compareTo(attrs2.creationTime());
+                                    } catch (IOException e) {
+                                        throw new RuntimeException(e);
+                                    }
+                                })
                                 .map(file -> new LogIngestor(file))
-                                .flatMap(ingestor -> ingestor.loadLogFile(watch, Duration.ofSeconds(1))
+                                .switchMap(ingestor -> ingestor.loadLogFile(watch, Duration.ofSeconds(1))
                                         .flatMap(ingestor::processLine)
-                                        .doOnNext(ingestor::storeBlockToDB))
-                                .subscribeOn(Schedulers.io())
+                                        .doOnNext(ingestor::storeDeltaToDB)
+                                        .observeOn(Schedulers.io()))
                                 .subscribe();
                     }
 

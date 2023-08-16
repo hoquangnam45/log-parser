@@ -6,12 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.java.Log;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 // A log block is a partial log session, 1 log file can contain multiple log block, a log block never span multiple files
 @AllArgsConstructor
@@ -32,18 +27,17 @@ public abstract class LogBlock {
         chunk.getRange().expandRange(line.toRange());
     }
 
-    public void addLogEntry(LogEntry entry) {
+    public LogEntry addLogEntry(LogEntry entry) {
         entries.add(entry);
         chunk.getRange().expandRange(entry.getChunk().getRange());
+        return entry;
     }
 
-    public void appendMessageToLogEntry(Line line) {
+    public LogEntry appendMessageToLogEntry(Line line) {
         // NOTE: This method should always be called after log entry so no need to check for size
-        entries.get(entries.size() - 1).appendMessageToLogEntry(line);
+        LogEntry entry = entries.get(entries.size() - 1);
+        entry.appendMessageToLogEntry(line);
         chunk.getRange().expandRange(line.toRange());
-    }
-
-    public List<LogBlockChange> getChanges(FileDiff diff) {
-
+        return entry;
     }
 }
