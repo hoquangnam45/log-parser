@@ -36,14 +36,16 @@ public class LogIngestor {
     private static final Pattern LOG_NEW_ENTRY_LINE_PATTERN = Pattern.compile("\\[([A-Z]{3,}) \\s*(\\S+)\\s*,\\s*(\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}(.\\d+)*)\\]\\s*:(.*)");
     private final File logFile;
     private final Queue<Line> headerBuffer;
+    private final TransactionManager transactionManager;
 
     private LogBlock currentBlock;
     private boolean logEntryEncounter;
     private boolean logBlockHeaderEncounter;
 
-    public LogIngestor(File logFile) {
+    public LogIngestor(File logFile, TransactionManager transactionManager) {
         this.logFile = logFile;
         this.headerBuffer = new ArrayDeque<>();
+        this.transactionManager = transactionManager;
     }
 
     public Observable<LogBlockDeltaChange> processLine(Line line) {
@@ -177,43 +179,38 @@ public class LogIngestor {
         });
     }
 
-    public void storeDeltaToDB(LogBlockDeltaChange change) {
-        switch (change.getType()) {
-            case NEW_STARTUP_BLOCK:
-                createNewLogSessionInDB();
-                break;
-            case NEW_ROLLING_BLOCK:
-                appendBlockToCurrentSessionDB();
-                break;
-            case LOG_ENTRY_CHANGED:
-                LogEntryDeltaChange entryDeltaChange = change.getEntryChange();
-                switch (entryDeltaChange.getType()) {
-                    case APPEND:
-                        appendToLogEntryDB(entryDeltaChange.getLogEntry());
+    public void storeDeltaToDB(LogBlockDeltaChange change) throws Exception {
+        transactionManager.runTransaction(new Transaction<Void>() {
+            private LogBlockRepo repo = new LogBlockRepo(getConnection());
+
+            @Override
+            public Void runInTransaction() throws Exception {
+                switch (change.getType()) {
+                    case NEW_STARTUP_BLOCK:
+                        repo.storeStartupLogBlock((StartupLogBlock) change.getBlock());
                         break;
-                    case NEW_ENTRY:
-                        createNewLogEntryDB(entryDeltaChange.getLogEntry());
+                    case NEW_ROLLING_BLOCK:
+                        repo.storeRollingLogBlock((RollingLogBlock) change.getBlock());
                         break;
+                    case LOG_ENTRY_CHANGED:
+                        LogEntryDeltaChange entryDeltaChange = change.getEntryChange();
+                        switch (entryDeltaChange.getType()) {
+                            case APPEND:
+                                repo.appendToLogEntry(entryDeltaChange.getLogEntry());
+                                break;
+                            case NEW_ENTRY:
+                                repo.storeLogEntry(change.getBlock(), entryDeltaChange.getLogEntry());
+                                break;
+                        }
+                        break;
+                    case ENVIRONMENTS_APPENDED:
+                        if (ch)
+                        repo.storeStartupLogBlockEnvironments(change.getEnvironmentChanges());
                 }
-                break;
-            case ENVIRONMENTS_APPENDED:
-                addEnvironmentToLogSessionDB(change.getEnvironmentChanges());
-        }
-    }
+                return null
+            }
+        })
 
-    private void addEnvironmentToLogSessionDB(List<Line> environmentChanges) {
-    }
-
-    private void appendToLogEntryDB(LogEntry logEntry) {
-    }
-
-    private void createNewLogEntryDB(LogEntry logEntry) {
-    }
-
-    private void appendBlockToCurrentSessionDB() {
-    }
-
-    private void createNewLogSessionInDB() {
     }
 
     public Observable<Line> loadLogFile(boolean watch, Duration interval) throws IOException {
@@ -252,7 +249,7 @@ public class LogIngestor {
     // then emit it later after it confident what type that line is
     private Observable<Pair<Line, LogLineType>> getLineType(Line line) {
         return Observable.<Observable<Pair<Line, LogLineType>>>create(e -> {
-            Observable<Pair<Line, LogLineType>> bufferableLineTypes = Observable.empty();
+            Observable<Pair<Line, LogLineType>> lineTypeHistory = Observable.empty();
 
             // Process buffer first so that events is emitted in order
             if (line.getLine().startsWith("*")) {
@@ -260,9 +257,10 @@ public class LogIngestor {
                 // instead of a header
                 headerBuffer.add(line);
             } else {
+                // Process buffer to create line type history
                 // Interact with header buffer queue to determine whether those line that has been buffered is just a
                 // message or maybe a header
-                bufferableLineTypes.mergeWith(Observable.create(innerE -> {
+                lineTypeHistory.mergeWith(Observable.create(innerE -> {
                     // The header buffer has less than 2 items so this certainly not a header just a normal message
                     if (headerBuffer.size() < 2) {
                         while (headerBuffer.peek() != null) {
@@ -293,7 +291,7 @@ public class LogIngestor {
                             boolean isHeader =
                                     lines.get(0).length() == lines.get(1).length() &&
                                             lines.get(1).length() == lines.get(2).length() &&
-                                            lines.get(0).length() > 0 &&
+                                            !lines.get(0).isEmpty() &&
                                             lines.get(0).replaceAll("\\*", "").length() == 0 && // Check if 1st line is all wildcard
                                             lines.get(2).replaceAll("\\*", "").length() == 0 && // Check if 3rd line is all wildcard
                                             ("System Startup".equals(headerType) || "New File".equals(headerType));
@@ -312,7 +310,7 @@ public class LogIngestor {
                                 }
 
                                 // Empty the moving windows that contains the header
-                                while (movingWindow.size() > 0) {
+                                while (!movingWindow.isEmpty()) {
                                     innerE.onNext(Pair.of(movingWindow.poll(), type));
                                 }
                             }
@@ -329,17 +327,18 @@ public class LogIngestor {
                 // Check if it's new log entry pattern
                 Matcher m = LOG_NEW_ENTRY_LINE_PATTERN.matcher(line.getLine());
                 if (m.find()) {
-                    bufferableLineTypes.mergeWith(Observable.just(Pair.of(line, LogLineType.LOG_ENTRY)));
+                    lineTypeHistory.mergeWith(Observable.just(Pair.of(line, LogLineType.LOG_ENTRY)));
                 } else {
                     // Just a log message
-                    bufferableLineTypes.mergeWith(Observable.just(Pair.of(line, LogLineType.MESSAGE)));
+                    lineTypeHistory.mergeWith(Observable.just(Pair.of(line, LogLineType.MESSAGE)));
                 }
 
-                // Emit the type of line in the buffer after processing then any other type that can be determined
-                // immediately without resorting to buffer
-                e.onNext(bufferableLineTypes);
+                e.onNext(lineTypeHistory);
                 e.onComplete();
             }
         }).flatMap(it -> it);
+    }
+
+    public void flushDeltaToDB() {
     }
 }

@@ -27,34 +27,26 @@ public abstract class Transaction<T> implements AutoCloseable
 	}
 
 	protected Connection getConnection() {
-		return Optional.ofNullable(getEnclosingTransaction())
-				.map(Transaction::getConnection)
-				.orElse(null);
+		if (getEnclosingTransaction() != null) {
+			return getEnclosingTransaction().getConnection();
+		}
+		throw new RuntimeException("Should not happen since enclosing transaction should have overriden this method");
 	}
 
 	public void commit() throws SQLException
 	{
-		Transaction<?> transaction = getEnclosingTransaction();
-		if (getEnclosingTransaction() != null) {
-			transaction.commit();
-		} else {
-			getEnclosingTransaction().commit();
+		if (getEnclosingTransaction() == null) {
+			if (getConnection().isValid(0)) {
+				getConnection().commit();
+			}
 		}
 	}
 
 	public void rollback() throws SQLException {
-		Transaction<?> transaction = getEnclosingTransaction();
-		if (getEnclosingTransaction() != null) {
-			transaction.rollback();
-		} else {
-			getEnclosingTransaction().commit();
+		if (getConnection().isValid(0)) {
+			getConnection().rollback();
 		}
 	}
 
-	public void close() throws Exception {
-		Transaction<?> transaction = getEnclosingTransaction();
-		if (getEnclosingTransaction() != null) {
-			transaction.close();
-		}
-	}
+	public void close() throws Exception {}
 }

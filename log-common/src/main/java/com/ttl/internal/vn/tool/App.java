@@ -149,6 +149,8 @@ public class App {
                                 .switchMap(ingestor -> ingestor.loadLogFile(watch, Duration.ofSeconds(1))
                                         .flatMap(ingestor::processLine)
                                         .doOnNext(ingestor::storeDeltaToDB)
+                                        .doOnComplete(ingestor::flushDeltaToDB)
+                                        .doOnError(Throwable::printStackTrace)
                                         .observeOn(Schedulers.io()))
                                 .subscribe();
                     }
